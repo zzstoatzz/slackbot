@@ -1,0 +1,27 @@
+[project]
+name = "slacky"
+version = "0.1.0"
+description = "A lightweight AI slackbot with built-in tool support"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic-ai[openai]@git+https://github.com/pydantic/pydantic-ai.git@main",
+    "prefect",
+    "raggy[chroma]",
+]
+
+[project.optional-dependencies]
+dev = ["ipython", "ruff"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/slacky"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
