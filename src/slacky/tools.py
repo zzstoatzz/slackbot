@@ -1,7 +1,10 @@
 import asyncio
+from typing import Any
 
 import httpx
 from prefect import flow, task
+from prefect.client.schemas.objects import FlowRun
+from prefect.deployments import run_deployment
 from raggy.loaders.github import GitHubRepoLoader
 from raggy.loaders.web import SitemapLoader
 from raggy.vectorstores.chroma import Chroma, query_collection
@@ -100,3 +103,19 @@ def google_search(query: str, num: int = 3) -> str:
     )
     response.raise_for_status()
     return response.json()
+
+
+def trigger_prefect_deployment(deployment_name: str, parameters: dict[str, Any]) -> str:
+    """Trigger a run of a prefect deployment
+
+    Args:
+        deployment_name: The name of the deployment to run.
+        parameters: The parameters to pass to the deployment.
+
+    Returns:
+        The result of the deployment run.
+    """
+    flow_run = run_deployment(deployment_name, parameters=parameters, timeout=0)
+    assert isinstance(flow_run, FlowRun) and flow_run.state is not None
+    assert flow_run.state.is_scheduled()
+    return f"Triggered deployment {deployment_name} with parameters {parameters}"
