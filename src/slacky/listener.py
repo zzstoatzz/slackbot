@@ -3,7 +3,7 @@ from typing import TypedDict
 import httpx
 from prefect import flow, task
 from prefect.events import get_events_subscriber
-from prefect.events.filters import EventFilter, EventNameFilter
+from prefect.settings import PREFECT_UI_URL
 from raggy.documents import Document
 from raggy.vectorstores.chroma import Chroma
 
@@ -11,7 +11,7 @@ from .agent import get_agent
 from .logging import get_logger
 from .settings import settings
 from .tools import query_knowledgebase
-from .utils import get_channel_name
+from .utils import get_channel_name, send_slack_message
 
 logger = get_logger(__name__)
 
@@ -77,15 +77,10 @@ async def process_liked_response(thread_ts: str, channel: str) -> None:
         logger.info(f"Saved liked thread {thread_ts} to knowledgebase")
 
 
-async def listen_for_events(events_filter: EventFilter | None = None) -> None:
+async def listen_for_events() -> None:
     """Listen for events and handle them."""
-    # Create filter for liked responses if none provided
-    if events_filter is None:
-        events_filter = EventFilter(
-            event=EventNameFilter(name=["slackbot.response.liked"])
-        )
 
-    async with get_events_subscriber(filter=events_filter) as subscriber:
+    async with get_events_subscriber(filter=None) as subscriber:
         async for event in subscriber:
             logger.info(f"📥 event: {event.event}")
 
@@ -99,3 +94,20 @@ async def listen_for_events(events_filter: EventFilter | None = None) -> None:
                     logger.warning(
                         "Missing thread_ts or channel in liked response event"
                     )
+
+            if event.event == "prefect.flow-run.Completed" and any(
+                resource.get("prefect.resource.id") == "prefect.tag.ai-triggered"
+                and resource.get("prefect.resource.role") == "tag"
+                for resource in event.related
+            ):
+                flow_run_resource_id = event.resource.get("prefect.resource.id")
+                assert flow_run_resource_id
+                flow_run_id = flow_run_resource_id.split(".")[-1]
+                flow_run_url = f"{PREFECT_UI_URL}/runs/flow-run/{flow_run_id}"
+                await send_slack_message(
+                    channel=settings.notification_channel_id,
+                    text=(
+                        f"hey your flow run I triggered earlier is complete\n"
+                        f"view it [here]({flow_run_url})"
+                    ),
+                )

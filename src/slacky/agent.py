@@ -15,6 +15,7 @@ from slacky.tools import (
     add_sitemap_to_knowledgebase,
     google_search,
     query_knowledgebase,
+    trigger_prefect_deployment,
 )
 from slacky.wrap import WatchToolCalls
 
@@ -170,8 +171,9 @@ def get_agent(
             add_sitemap_to_knowledgebase,
             add_github_repo_to_knowledgebase,
             google_search,
+            trigger_prefect_deployment,
         ]
-    return SlackAgent(
+    return SlackAgent[result_type](
         model=settings.ai_model,
         system_prompt=system_prompt or settings.base_system_prompt,
         tools=tools,

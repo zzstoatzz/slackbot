@@ -105,7 +105,9 @@ def google_search(query: str, num: int = 3) -> str:
     return response.json()
 
 
-def trigger_prefect_deployment(deployment_name: str, parameters: dict[str, Any]) -> str:
+def trigger_prefect_deployment(
+    deployment_name: str, parameters: dict[str, Any] | None = None
+) -> str:
     """Trigger a run of a prefect deployment
 
     Args:
@@ -115,7 +117,14 @@ def trigger_prefect_deployment(deployment_name: str, parameters: dict[str, Any])
     Returns:
         The result of the deployment run.
     """
-    flow_run = run_deployment(deployment_name, parameters=parameters, timeout=0)
+    import prefect.main  # noqa # type: ignore
+
+    flow_run = run_deployment(
+        deployment_name,
+        parameters=parameters,
+        timeout=0,
+        tags=["ai-triggered"],
+    )
     assert isinstance(flow_run, FlowRun) and flow_run.state is not None
     assert flow_run.state.is_scheduled()
     return f"Triggered deployment {deployment_name} with parameters {parameters}"

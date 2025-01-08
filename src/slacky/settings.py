@@ -57,6 +57,10 @@ class Settings(BaseSettings):
     chroma_client_type: ChromaClientType = Field(
         default="base", description="Chroma client type"
     )
+
+    notification_channel_id: str = Field(
+        default=..., description="Channel ID to send notifications to"
+    )
     # Development
     debug: bool = Field(default=False, description="Enable debug mode")
 

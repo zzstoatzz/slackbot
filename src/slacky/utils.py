@@ -65,15 +65,20 @@ def convert_md_links_to_slack(text: str) -> str:
 async def send_slack_message(**slack_message_kwargs: Unpack[SlackMessage]) -> None:
     """Send a message to Slack."""
     logger = get_logger(__name__)
-    logger.info(f"Sending message to Slack: {slack_message_kwargs.get('text')}")
+    message = slack_message_kwargs.get("text")
+    logger.info(f"Sending message to Slack: {message}")
+
+    if not message:
+        logger.warning("No message to send to Slack")
+        return
+
     async with httpx.AsyncClient() as client:
         response = await client.post(
             "https://slack.com/api/chat.postMessage",
             headers={
                 "Authorization": f"Bearer {settings.bot_token.get_secret_value()}"
             },
-            json=slack_message_kwargs
-            | {"text": convert_md_links_to_slack(slack_message_kwargs.get("text"))},
+            json=slack_message_kwargs | {"text": convert_md_links_to_slack(message)},
         )
         response.raise_for_status()
 
