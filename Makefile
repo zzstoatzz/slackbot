@@ -4,7 +4,7 @@ install:
 	uv sync --frozen
 
 dev:
-	PYTHONPATH=src uv run --with-editable '.[dev]' uvicorn slacky.api:app --reload --port 4200 --reload-dir src/slacky
+	PYTHONPATH=src uv run --with-editable '.[dev]' uvicorn slacky.api:app --reload --port 8000 --reload-dir src/slacky
 
 lint:
 	uv run --with-editable '.[dev]' ruff check . --fix

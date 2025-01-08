@@ -1,6 +1,7 @@
 from typing import Any, Callable, Generic, TypeAlias, TypedDict, TypeVar
 
 from prefect.artifacts import create_markdown_artifact
+from prefect.cache_policies import NONE
 from pydantic import TypeAdapter
 from pydantic_ai import Agent
 from pydantic_ai.messages import ModelMessage
@@ -9,6 +10,13 @@ from pydantic_core import to_json
 
 from slacky.logging import get_logger
 from slacky.settings import settings
+from slacky.tools import (
+    add_github_repo_to_knowledgebase,
+    add_sitemap_to_knowledgebase,
+    google_search,
+    query_knowledgebase,
+)
+from slacky.wrap import WatchToolCalls
 
 T = TypeVar("T")
 
@@ -74,6 +82,7 @@ class SlackAgent(Generic[T]):
         message: str,
         thread_ts: str,
         channel_id: str,
+        decorator_settings: dict[str, Any] | None = None,
     ) -> T:
         """Handle a message in a thread."""
         logger.info(f"Handling message in thread {thread_ts}")
@@ -94,13 +103,20 @@ class SlackAgent(Generic[T]):
             channel_id=channel_id,
             messages=thread_messages,
         )
+        if decorator_settings is None:
+            decorator_settings = {
+                "cache_policy": NONE,
+                "task_run_name": "execute {self.function.__name__}",
+                "log_prints": True,
+            }
 
         # Run the agent
-        result = await self.agent.run(
-            user_prompt=message,
-            message_history=thread_messages,
-            deps=thread_context,
-        )
+        with WatchToolCalls(settings=decorator_settings):
+            result = await self.agent.run(
+                user_prompt=message,
+                message_history=thread_messages,
+                deps=thread_context,
+            )
 
         await create_markdown_artifact(
             key="agent-response",
@@ -140,3 +156,18 @@ class SlackAgent(Generic[T]):
         )
 
         return result.data
+
+
+def get_agent(tools: list[Callable[..., Any]] | None = None) -> SlackAgent[str]:
+    """Get the Slack agent."""
+    tools = tools or [
+        query_knowledgebase,
+        add_sitemap_to_knowledgebase,
+        add_github_repo_to_knowledgebase,
+        google_search,
+    ]
+    return SlackAgent(
+        model=settings.ai_model,
+        system_prompt=settings.base_system_prompt,
+        tools=tools,
+    )

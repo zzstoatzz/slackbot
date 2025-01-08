@@ -36,7 +36,7 @@ class Settings(BaseSettings):
         description="Path to message cache file",
     )
     host: str = Field(default="0.0.0.0", description="Host to run the server on")
-    port: int = Field(default=4200, description="Port to run the server on")
+    port: int = Field(default=8000, description="Port to run the server on")
 
     log_level: str = Field(default="INFO", description="Logging level")
 
@@ -47,6 +47,10 @@ class Settings(BaseSettings):
         default=..., description="Slack Signing Secret - used to verify requests"
     )
 
+    google_api_key: SecretStr = Field(default=..., description="Google API Key")
+    google_cx: SecretStr = Field(
+        default=..., description="Google Custom Search Engine ID"
+    )
     # Development
     debug: bool = Field(default=False, description="Enable debug mode")
 
