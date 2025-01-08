@@ -4,6 +4,7 @@ from typing import Any
 from pydantic import Field, SecretStr, model_validator
 from pydantic_ai.models import KnownModelName
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from raggy.vectorstores.chroma import ChromaClientType
 from typing_extensions import Self
 
 from slacky.logging import setup_logging
@@ -50,6 +51,11 @@ class Settings(BaseSettings):
     google_api_key: SecretStr = Field(default=..., description="Google API Key")
     google_cx: SecretStr = Field(
         default=..., description="Google Custom Search Engine ID"
+    )
+
+    namespace: str = Field(default="slacky", description="Namespace to use")
+    chroma_client_type: ChromaClientType = Field(
+        default="base", description="Chroma client type"
     )
     # Development
     debug: bool = Field(default=False, description="Enable debug mode")

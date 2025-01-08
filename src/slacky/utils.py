@@ -47,6 +47,20 @@ def get_channel_name(channel_id: str) -> str:
         return response.json().get("channel", {}).get("name")
 
 
+def convert_md_links_to_slack(text: str) -> str:
+    """Convert Markdown links to Slack-style links."""
+    md_link_pattern = r"\[(?P<text>[^\]]+)]\((?P<url>[^\)]+)\)"
+
+    def to_slack_link(match: re.Match[str]) -> str:
+        return f'<{match.group("url")}|{match.group("text")}>'
+
+    slack_text = re.sub(md_link_pattern, to_slack_link, text)
+
+    slack_text = re.sub(r"\*\*(.*?)\*\*", r"*\1*", slack_text)
+
+    return slack_text
+
+
 @task
 async def send_slack_message(**slack_message_kwargs: Unpack[SlackMessage]) -> None:
     """Send a message to Slack."""
@@ -58,7 +72,8 @@ async def send_slack_message(**slack_message_kwargs: Unpack[SlackMessage]) -> No
             headers={
                 "Authorization": f"Bearer {settings.bot_token.get_secret_value()}"
             },
-            json=slack_message_kwargs,
+            json=slack_message_kwargs
+            | {"text": convert_md_links_to_slack(slack_message_kwargs.get("text"))},
         )
         response.raise_for_status()
 

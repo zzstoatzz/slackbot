@@ -12,51 +12,71 @@ from .utils import get_logger
 logger = get_logger(__name__)
 
 
-def add_sitemap_to_knowledgebase(sitemap_url: str, namespace: str = "slacky") -> None:
-    """Add a sitemap (like https://prefect.io/sitemap.xml) to the knowledgebase."""
+def add_sitemap_to_knowledgebase(
+    sitemap_url: str, collection_name: str = "slacky"
+) -> str:
+    """Add a sitemap (like https://prefect.io/sitemap.xml) to the knowledgebase.
+
+    Args:
+        sitemap_url: The sitemap URL to add to the knowledgebase.
+
+    Returns:
+        A message indicating the number of documents added to the knowledgebase.
+    """
     loader = SitemapLoader(urls=[sitemap_url])
     documents = asyncio.run(loader.load())
-    with Chroma(collection_name=namespace) as vectorstore:
+    namespace = collection_name or settings.namespace
+    with Chroma(
+        collection_name=namespace,
+        client_type=settings.chroma_client_type,
+    ) as vectorstore:
         documents = vectorstore.add(documents)
-        logger.info(
+        message = (
             f"Added {len(documents)} documents from {sitemap_url} to the knowledgebase"
         )
+        logger.info(message)
+        return message
 
 
-def add_github_repo_to_knowledgebase(repo: str, namespace: str = "slacky") -> None:
+def add_github_repo_to_knowledgebase(repo: str, collection_name: str = "slacky") -> str:
     """Add a GitHub repo to the knowledgebase.
 
     Args:
         repo: The GitHub repo to add to the knowledgebase (e.g. "prefecthq/prefect")
-        namespace: The namespace to add the repo to.
+
+    Returns:
+        A message indicating the number of documents added to the knowledgebase.
     """
-    loader = GitHubRepoLoader(repo=repo)
+    loader = GitHubRepoLoader(repo=repo, include_globs=["README.md", "**/*.py"])
     documents = asyncio.run(loader.load())
-    with Chroma(collection_name=namespace) as vectorstore:
+    namespace = collection_name or settings.namespace
+    with Chroma(
+        collection_name=namespace,
+        client_type=settings.chroma_client_type,
+    ) as vectorstore:
         documents = vectorstore.add(documents)
-        logger.info(
-            f"Added {len(documents)} documents from {repo} to the knowledgebase"
-        )
-
-
-@task
-def _run_single_query(query: str, namespace: str = "slacky") -> str:
-    return query_collection(query_text=query, collection_name=namespace)
+        message = f"Added {len(documents)} documents from {repo} to the knowledgebase"
+        logger.info(message)
+        return message
 
 
 @flow
-def query_knowledgebase(queries: list[str], namespace: str = "slacky") -> str:
+def query_knowledgebase(queries: list[str], collection_name: str = "slacky") -> str:
     """Query the knowledgebase and return the answer. provide multiple queries
     to cover idiosyncrasies in the users phrasing and the knowledgebase.
 
     Args:
         queries: The queries to run.
-        namespace: The namespace to query.
 
     Returns:
         The answer to the queries.
     """
-    return "".join(_run_single_query.map(queries, namespace=namespace).result())
+    namespace = collection_name or settings.namespace
+    return "".join(
+        task(query_collection)
+        .map(queries, collection_name=namespace, max_tokens=600)
+        .result()
+    )
 
 
 def google_search(query: str, num: int = 3) -> str:

@@ -1,4 +1,4 @@
-.PHONY: install clean lint format dev
+.PHONY: install clean lint format dev reset-db
 
 install:
 	uv sync --frozen

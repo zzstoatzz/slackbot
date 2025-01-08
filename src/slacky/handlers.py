@@ -2,6 +2,7 @@ from typing import Any, Callable
 
 import prefect.runtime.flow_run
 from prefect import flow, get_run_logger, task
+from prefect.events import emit_event
 
 from .agent import get_agent
 from .logging import get_logger
@@ -15,7 +16,7 @@ from .utils import (
 logger = get_logger(__name__)
 
 
-@task
+@flow
 async def run_agent(
     message: str,
     thread_ts: str,
@@ -77,15 +78,30 @@ async def handle_reaction(event: dict[str, Any]) -> None:
     if not is_positive_reaction(reaction):
         return
 
-    # For now, just log the reaction
+    thread_ts = event.get("item", {}).get("ts")
+    channel = event.get("item", {}).get("channel")
+    user = event.get("user") or event.get("user_profile", {}).get("real_name")
+
     logger.info(
-        f"Received {reaction} reaction from user {event.get('user')} "
-        f"on message {event.get('item', {}).get('ts')} "
-        f"in channel {event.get('item', {}).get('channel')}"
+        f"Received {reaction} reaction from user {user} "
+        f"on message {thread_ts} "
+        f"in channel {channel}"
     )
+
+    # Emit an event for positive feedback
+    e = emit_event(
+        event="slackbot.response.liked",
+        resource={
+            "prefect.resource.id": thread_ts,
+            "prefect.resource.role": "thread",
+            "channel": channel,
+            "user": user,
+        },
+    )
+    logger.info(f"Emitted event: {e}")
 
     await send_slack_message(
         text=f"Feedback received: {reaction}",
-        thread_ts=event.get("item", {}).get("ts"),
-        channel=event.get("item", {}).get("channel"),
+        thread_ts=thread_ts,
+        channel=channel,
     )

@@ -1,0 +1,28 @@
+1. Introduction
+   - Simple Slack bot that learns from user feedback
+   - Built with standard Python async/await patterns
+   - Prefect for workflow orchestration
+
+2. Core Components
+   - FastAPI for Slack events
+   - PydanticAI for the agent
+   - Prefect flows for background processing
+   - ChromaDB for memory
+
+3. Key Workflows
+   - Message handling (@flow)
+   - Reaction handling (@task)
+   - Event-driven learning
+   - Vector storage of liked responses
+
+4. Demo Flow
+   - Bot receives message
+   - Background processing with context
+   - User likes response
+   - Knowledge capture
+   
+5. Takeaways
+   - Prefect's event system
+   - Flow-based agent architecture
+   - Standard Python patterns
+   - No framework lock-in 

@@ -158,16 +158,22 @@ class SlackAgent(Generic[T]):
         return result.data
 
 
-def get_agent(tools: list[Callable[..., Any]] | None = None) -> SlackAgent[str]:
+def get_agent(
+    tools: list[Callable[..., Any]] | None = None,
+    system_prompt: str | None = None,
+    result_type: type[T] = str,
+) -> SlackAgent[T]:
     """Get the Slack agent."""
-    tools = tools or [
-        query_knowledgebase,
-        add_sitemap_to_knowledgebase,
-        add_github_repo_to_knowledgebase,
-        google_search,
-    ]
+    if tools is None:
+        tools = [
+            query_knowledgebase,
+            add_sitemap_to_knowledgebase,
+            add_github_repo_to_knowledgebase,
+            google_search,
+        ]
     return SlackAgent(
         model=settings.ai_model,
-        system_prompt=settings.base_system_prompt,
+        system_prompt=system_prompt or settings.base_system_prompt,
         tools=tools,
+        result_type=result_type,
     )
